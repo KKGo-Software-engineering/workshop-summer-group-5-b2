@@ -24,3 +24,15 @@ func TestHealthCheck(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestSlow(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/slow", nil)
+	rec := httptest.NewRecorder()
+	e := echo.New()
+	c := e.NewContext(req, rec)
+
+	err := Slow(c)
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
