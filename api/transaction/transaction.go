@@ -30,10 +30,6 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 	return &handler{cfg, db}
 }
 
-const (
-	cStmt = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
-)
-
 func (h handler) GetAll(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
