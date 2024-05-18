@@ -87,6 +87,6 @@ func TestCreate(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.JSONEq(t, `{"data":{"id":1,"date":"2024-05-18T15:00:37.557628+07:00","amount":200.99,"category":"refund","transaction_type":"income","note":"","image_url":"","spender_id":2}}`, rec.Body.String())
+		assert.JSONEq(t, `{"id":1,"date":"2024-05-18T15:00:37.557628+07:00","amount":200.99,"category":"refund","transaction_type":"income","note":"","image_url":"","spender_id":2}`, rec.Body.String())
 	})
 }

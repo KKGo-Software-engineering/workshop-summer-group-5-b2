@@ -70,7 +70,5 @@ func (h handler) Create(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	req.ID = lastInsertId
-	return c.JSON(http.StatusCreated, echo.Map{
-		"data": req,
-	})
+	return c.JSON(http.StatusCreated, req)
 }
