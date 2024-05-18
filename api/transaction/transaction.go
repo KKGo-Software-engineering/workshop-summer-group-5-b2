@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type Expense struct {
+type Transaction struct {
 	ID              int64   `json:"id"`
 	Date            string  `json:"date"`
 	Amount          float64 `json:"amount"`
@@ -41,9 +41,9 @@ func (h handler) GetAll(c echo.Context) error {
 	}
 	defer rows.Close()
 
-	var exs []Expense
+	var exs []Transaction
 	for rows.Next() {
-		var ex Expense
+		var ex Transaction
 		err := rows.Scan(&ex.ID, &ex.Date, &ex.Amount, &ex.Category, &ex.TransactionType, &ex.Note, &ex.ImageURL, &ex.SpenderId)
 		if err != nil {
 			logger.Error("scan error", zap.Error(err))
@@ -58,7 +58,7 @@ func (h handler) GetAll(c echo.Context) error {
 func (h handler) Create(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
-	var req Expense
+	var req Transaction
 	if err := c.Bind(&req); err != nil {
 		logger.Error("bad request body", zap.Error(err))
 		return c.JSON(http.StatusBadRequest, "bad request body")
