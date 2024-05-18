@@ -58,3 +58,23 @@ func (h handler) GetAll(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, exs)
 }
+
+func (h handler) Create(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+	var req Expense
+	if err := c.Bind(&req); err != nil {
+		logger.Error("bad request body", zap.Error(err))
+		return c.JSON(http.StatusBadRequest, "bad request body")
+	}
+	var lastInsertId int64
+	err := h.db.QueryRowContext(ctx, `INSERT INTO "transaction" ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
+	if err != nil {
+		logger.Error("query row error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	req.ID = lastInsertId
+	return c.JSON(http.StatusCreated, echo.Map{
+		"data": req,
+	})
+}

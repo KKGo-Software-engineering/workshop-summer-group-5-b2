@@ -41,6 +41,10 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 		v1.POST("/spenders", h.Create)
 
 	}
+	{
+		h := transaction.New(cfg.FeatureFlag, db)
+		v1.POST("/transactions", h.Create)
+	}
 
 	return &Server{e}
 }
