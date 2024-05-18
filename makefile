@@ -51,3 +51,9 @@ health:
 spenders:
 	@echo "Getting the spenders..."
 	curl -u user:secret http://localhost:8080/api/v1/spenders
+
+.PHONY: coverage
+coverage:
+	@echo "Running tests with coverage..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
