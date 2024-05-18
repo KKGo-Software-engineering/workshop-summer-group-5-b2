@@ -3,6 +3,7 @@ package transaction
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -32,8 +33,8 @@ func TestGetAllSpender(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `[{"id": 1, 
-		"date": "2024-05-18 08:45:24.119432+00", 
+		assert.JSONEq(t, `[{"id": 1,
+		"date": "2024-05-18 08:45:24.119432+00",
 		"amount": 0.0,
 		"category":"Food",
 		"transaction_type":"expense",
@@ -62,4 +63,30 @@ func TestGetAllSpender(t *testing.T) {
 	// 	assert.NoError(t, err)
 	// 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	// })
+}
+
+func TestCreate(t *testing.T) {
+	t.Run("create transaction succesfully", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"date":"2024-05-18T15:00:37.557628+07:00","amount":200.99,"category":"refund","transaction_type":"income","spender_id":2}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+		cStmt := `INSERT INTO "transaction" ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`
+		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
+		mock.ExpectQuery(cStmt).WithArgs("2024-05-18T15:00:37.557628+07:00", 200.99, "refund", "income", 2).WillReturnRows(row)
+		cfg := config.FeatureFlag{EnableCreateSpender: true}
+
+		h := New(cfg, db)
+		err := h.Create(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.JSONEq(t, `{"data":{"id":1,"date":"2024-05-18T15:00:37.557628+07:00","amount":200.99,"category":"refund","transaction_type":"income","note":"","image_url":"","spender_id":2}}`, rec.Body.String())
+	})
 }
