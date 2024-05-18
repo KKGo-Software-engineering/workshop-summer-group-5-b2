@@ -15,10 +15,10 @@ type Expense struct {
 	Date            string  `json:"date"`
 	Amount          float64 `json:"amount"`
 	Category        string  `json:"category"`
-	TransactionType string  `json:"transactionType"`
+	TransactionType string  `json:"transaction_type"`
 	Note            string  `json:"note"`
-	ImageURL        string  `json:"imageUrl"`
-	SpenderId       int64   `json:"spenderId"`
+	ImageURL        string  `json:"image_url"`
+	SpenderId       int64   `json:"spender_id"`
 }
 
 type handler struct {
@@ -37,9 +37,6 @@ const (
 func (h handler) GetAll(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
-
-	/*
-	 */
 
 	rows, err := h.db.QueryContext(ctx, `SELECT * FROM transaction WHERE transaction_type='expense'`)
 	if err != nil {
