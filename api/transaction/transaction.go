@@ -139,6 +139,9 @@ type SpenderIDTransactionResponse struct {
 	Summary      Summary       `json:"summary"`
 	Pagination   Pagination    `json:"pagination"`
 }
+type SpenderIDTransactionResponseSummary struct {
+	Summary Summary `json:"summary"`
+}
 
 func (h *handler) GetSpenderTransactions(c echo.Context) error {
 	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
@@ -195,4 +198,88 @@ func (h *handler) GetSpenderTransactions(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+
+	spenderID := c.Param("id") // Get the spender ID from the URL parameter
+
+	// Placeholder for the database connection
+	db := h.db // Assuming there is a db field in the handler struct for the database connection
+
+	// Querying the database for transactions related to the spender
+	rows, err := db.Query(sqlQuery, spenderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+		return err
+	}
+
+	defer rows.Close()
+
+	var transactions []Transaction
+	var totalIncome, totalExpenses float64
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		transactions = append(transactions, t)
+
+		// Calculate totals for summary
+		if t.TransactionType == "income" {
+			totalIncome += t.Amount
+		} else {
+			totalExpenses += t.Amount
+		}
+	}
+
+	// Calculate the current balance
+	currentBalance := totalIncome - totalExpenses
+
+	// Construct the response
+	response := SpenderIDTransactionResponseSummary{
+		Summary: Summary{
+			TotalIncome:    totalIncome,
+			TotalExpenses:  totalExpenses,
+			CurrentBalance: currentBalance,
+		},
+	}
+
+	return c.JSON(http.StatusOK, response)
+}
+
+type CategoryTransactions struct {
+	Category     string        `json:"category"`
+	Transactions []Transaction `json:"transactions"`
+}
+
+func (h *handler) GetTransactionsGroupedByCategory(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction`
+
+	rows, err := h.db.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	defer rows.Close()
+
+	transactionsByCategory := make(map[string][]Transaction)
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
+		if err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		transactionsByCategory[t.Category] = append(transactionsByCategory[t.Category], t)
+	}
+
+	return c.JSON(http.StatusOK, transactionsByCategory)
 }
