@@ -21,6 +21,10 @@ type handler struct {
 	db   *sql.DB
 }
 
+type Category struct {
+	Name string `json:"name"`
+}
+
 func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 	return &handler{cfg, db}
 }
@@ -28,6 +32,7 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 const (
 	cStmt   = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
 	getStmt = `SELECT id, name, email FROM spender WHERE id = $1;`
+	getAllCats  = `SELECT DISTINCT category FROM transaction;`
 )
 
 func (h handler) Create(c echo.Context) error {
@@ -96,4 +101,31 @@ func (h handler) GetSpenderByID(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, sp)
+}
+
+func (h handler) GetAllCategories(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+
+	rows, err := h.db.QueryContext(ctx, getAllCats)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	defer rows.Close()
+
+	var categories []string
+	for rows.Next() {
+		var category string
+		err := rows.Scan(&category)
+		if err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		categories = append(categories, category)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"categories": categories,
+	})
 }

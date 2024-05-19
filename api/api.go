@@ -40,6 +40,7 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 		v1.GET("/spenders", h.GetAll)
 		v1.POST("/spenders", h.Create)
 		v1.GET("/spenders/:id", h.GetSpenderByID)
+		v1.GET("/categories", h.GetAllCategories)
 	}
 	{
 		h := transaction.New(cfg.FeatureFlag, db)

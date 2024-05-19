@@ -168,3 +168,73 @@ func TestGetSpenderByID(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
+
+func TestGetAllCategories(t *testing.T) {
+	e := echo.New()
+	defer e.Close()
+
+	t.Run("get all categories successfully", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/categories", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/categories")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"category"}).
+			AddRow("Food").
+			AddRow("Travel").
+			AddRow("Shopping")
+		mock.ExpectQuery(getAllCats).WillReturnRows(rows)
+		cfg := config.FeatureFlag{}
+
+		h := New(cfg, db)
+		err := h.GetAllCategories(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"categories": ["Food", "Travel", "Shopping"]}`, rec.Body.String())
+	})
+
+	t.Run("get all categories database error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/categories", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/categories")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectQuery(getAllCats).WillReturnError(assert.AnError)
+		cfg := config.FeatureFlag{}
+
+		h := New(cfg, db)
+		err := h.GetAllCategories(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("get all categories scan error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/categories", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/categories")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"category"}).
+			AddRow("Food").
+			AddRow(nil) // This will cause a scan error
+		mock.ExpectQuery(getAllCats).WillReturnRows(rows)
+		cfg := config.FeatureFlag{}
+
+		h := New(cfg, db)
+		err := h.GetAllCategories(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
