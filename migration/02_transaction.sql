@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS "transaction" (
+CREATE TABLE IF NOT EXISTS transaction (
   id SERIAL PRIMARY KEY,
   date TIMESTAMP WITH TIME ZONE,
   amount DECIMAL(10,2) DEFAULT 0,
@@ -14,5 +14,5 @@ CREATE TABLE IF NOT EXISTS "transaction" (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS "transaction";
+DROP TABLE IF EXISTS transaction;
 -- +goose StatementEnd
