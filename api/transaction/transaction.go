@@ -119,9 +119,7 @@ func (h handler) PutTransaction(c echo.Context) error {
 	}
 
 	// Confirm the update was successful
-	return c.JSON(http.StatusOK, echo.Map{
-		"message": "Transaction updated successfully",
-	})
+	return c.JSON(http.StatusOK, req)
 }
 
 type Summary struct {

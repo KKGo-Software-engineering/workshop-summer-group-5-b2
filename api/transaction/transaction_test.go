@@ -148,7 +148,7 @@ func TestPutTransaction(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"message": "Transaction updated successfully"}`, rec.Body.String())
+	assert.JSONEq(t, string(bodyData), rec.Body.String())
 }
 
 func TestGetSpenderTransactionsSummarySuccess(t *testing.T) {
@@ -358,4 +358,30 @@ func TestGetSpenderTransactionsDBError(t *testing.T) {
 		assert.Equal(t, 500, rec.Code)
 	}
 
+}
+
+func TestGetAllTransaction(t *testing.T) {
+	e := echo.New()
+	defer e.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	assert.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
+		AddRow(1, "2024-05-18T08:45:24.119432Z", 100.0, "Food", "expense", "Lunch at cafe", "http://example.com/image.jpg", 1).
+		AddRow(2, "2024-05-18T09:45:24.119432Z", 50.0, "Transport", "expense", "Bus fare", "", 2)
+	mock.ExpectQuery(`SELECT * FROM public.transaction`).WillReturnRows(rows)
+
+	h := handler{db: db}
+	err = h.GetAllTransaction(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	expectedJSON := `[{"id":1,"date":"2024-05-18T08:45:24.119432Z","amount":100.0,"category":"Food","transaction_type":"expense","note":"Lunch at cafe","image_url":"http://example.com/image.jpg","spender_id":1},{"id":2,"date":"2024-05-18T09:45:24.119432Z","amount":50.0,"category":"Transport","transaction_type":"expense","note":"Bus fare","image_url":"","spender_id":2}]`
+	assert.JSONEq(t, expectedJSON, rec.Body.String())
 }
