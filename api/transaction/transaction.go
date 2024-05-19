@@ -258,3 +258,28 @@ func (h *handler) GetSpenderTransactions(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+func (h handler) GetAllTransaction(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+
+	rows, err := h.db.QueryContext(ctx, `SELECT * FROM public.transaction`)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	defer rows.Close()
+
+	var exs []Transaction
+	for rows.Next() {
+		var ex Transaction
+		err := rows.Scan(&ex.ID, &ex.Date, &ex.Amount, &ex.Category, &ex.TransactionType, &ex.Note, &ex.ImageURL, &ex.SpenderId)
+		if err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		exs = append(exs, ex)
+	}
+
+	return c.JSON(http.StatusOK, exs)
+}

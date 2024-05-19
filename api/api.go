@@ -49,6 +49,8 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 		v1.GET("/spenders/:id/transactions", h.GetSpenderTransactions)
 		v1.GET("/spenders/:id/transactions/summary", h.GetSpenderTransactionSummary)
 		v1.GET("/categorize", h.GetTransactionsGroupedByCategory)
+		v1.GET("/transactions", h.GetAllTransaction)
+
 	}
 
 	return &Server{e}
