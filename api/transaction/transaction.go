@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -67,7 +68,7 @@ func (h handler) Create(c echo.Context) error {
 	var lastInsertId int64
 	err := h.db.QueryRowContext(ctx, `INSERT INTO "transaction" ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
 	if err != nil {
-		logger.Error("query row error", zap.Error(err))
+		fmt.Println("query row error", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	req.ID = lastInsertId
