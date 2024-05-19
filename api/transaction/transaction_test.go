@@ -31,7 +31,7 @@ func TestGetAllSpender(t *testing.T) {
 
 		rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
 			AddRow(1, "2024-05-18 08:45:24.119432+00", "0.0", "Food", "expense", "", "", "1")
-		mock.ExpectQuery(`SELECT * FROM transaction WHERE transaction_type='expense'`).WillReturnRows(rows)
+		mock.ExpectQuery(`SELECT * FROM public.transaction WHERE transaction_type='expense'`).WillReturnRows(rows)
 
 		h := New(config.FeatureFlag{}, db)
 		err := h.GetAll(c)
@@ -82,7 +82,7 @@ func TestCreate(t *testing.T) {
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
-		cStmt := `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`
+		cStmt := `INSERT INTO public.transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`
 		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
 		mock.ExpectQuery(cStmt).WithArgs("2024-05-18T15:00:37.557628+07:00", 200.99, "refund", "income", 2).WillReturnRows(row)
 		cfg := config.FeatureFlag{EnableCreateSpender: true}
@@ -108,7 +108,7 @@ type Expense struct {
 }
 
 func TestPutTransaction(t *testing.T) {
-	query := `UPDATE "transaction" SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 
 	e := echo.New()
 	defer e.Close()
@@ -254,7 +254,7 @@ func TestGetTransactionsGroupedByCategory(t *testing.T) {
 }
 
 func TestPutTransactionDbFailure(t *testing.T) {
-	query := `UPDATE "transaction" SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 	e := echo.New()
 	defer e.Close()
 

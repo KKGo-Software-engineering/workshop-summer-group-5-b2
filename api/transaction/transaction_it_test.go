@@ -21,7 +21,7 @@ func TestCreateIT(t *testing.T) {
 	t.Run("create transactions successfully", func(t *testing.T) {
 		conn := newDatabase(t)
 		t.Cleanup(func() {
-			conn.Query("DELETE FROM transaction Where amount=$1 AND category=$2 AND date=$3;", 200.99, "refund", "2024-05-18T15:00:37.557628+07:00")
+			conn.Query("DELETE FROM public.transaction Where amount=$1 AND category=$2 AND date=$3;", 200.99, "refund", "2024-05-18T15:00:37.557628+07:00")
 		})
 
 		h := New(config.FeatureFlag{EnableCreateSpender: true}, conn)

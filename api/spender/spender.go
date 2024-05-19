@@ -30,9 +30,9 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 }
 
 const (
-	cStmt   = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
-	getStmt = `SELECT id, name, email FROM spender WHERE id = $1;`
-	getAllCats  = `SELECT DISTINCT category FROM transaction;`
+	cStmt      = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
+	getStmt    = `SELECT id, name, email FROM spender WHERE id = $1;`
+	getAllCats = `SELECT DISTINCT category FROM public.transaction;`
 )
 
 func (h handler) Create(c echo.Context) error {

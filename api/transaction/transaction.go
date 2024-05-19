@@ -36,7 +36,7 @@ func (h handler) GetAll(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
-	rows, err := h.db.QueryContext(ctx, `SELECT * FROM transaction WHERE transaction_type='expense'`)
+	rows, err := h.db.QueryContext(ctx, `SELECT * FROM public.transaction WHERE transaction_type='expense'`)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -67,7 +67,7 @@ func (h handler) Create(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, msg)
 	}
 	var lastInsertId int64
-	err := h.db.QueryRowContext(ctx, `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
+	err := h.db.QueryRowContext(ctx, `INSERT INTO public.transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
 	if err != nil {
 		fmt.Println("query row error", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -111,7 +111,7 @@ func (h handler) PutTransaction(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, msg)
 	}
 
-	query := `UPDATE "transaction" SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 	_, err := h.db.ExecContext(ctx, query, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId, req.Note, req.ImageUrl, transactionID)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
