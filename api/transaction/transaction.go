@@ -58,12 +58,13 @@ func (h handler) GetAll(c echo.Context) error {
 }
 
 func (h handler) Create(c echo.Context) error {
+	msg := "bad request body"
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 	var req Transaction
 	if err := c.Bind(&req); err != nil {
-		logger.Error("bad request body", zap.Error(err))
-		return c.JSON(http.StatusBadRequest, "bad request body")
+		logger.Error(msg, zap.Error(err))
+		return c.JSON(http.StatusBadRequest, msg)
 	}
 	var lastInsertId int64
 	err := h.db.QueryRowContext(ctx, `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
@@ -99,14 +100,15 @@ type PutTransaction struct {
 }
 
 func (h handler) PutTransaction(c echo.Context) error {
+	msg := "bad request body"
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
 	transactionID := c.Param("id") // Get the ID from the URL path
 	var req PutTransaction
 	if err := c.Bind(&req); err != nil {
-		logger.Error("bad request body", zap.Error(err))
-		return c.JSON(http.StatusBadRequest, "bad request body")
+		logger.Error(msg, zap.Error(err))
+		return c.JSON(http.StatusBadRequest, msg)
 	}
 
 	query := `UPDATE "transaction" SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
@@ -141,4 +143,55 @@ type SpenderIDTransactionResponse struct {
 }
 type SpenderIDTransactionResponseSummary struct {
 	Summary Summary `json:"summary"`
+}
+
+func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+
+	spenderID := c.Param("id") // Get the spender ID from the URL parameter
+
+	// Placeholder for the database connection
+	db := h.db // Assuming there is a db field in the handler struct for the database connection
+
+	// Querying the database for transactions related to the spender
+	rows, err := db.Query(sqlQuery, spenderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+		return err
+	}
+
+	defer rows.Close()
+
+	var transactions []Transaction
+	var totalIncome, totalExpenses float64
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		transactions = append(transactions, t)
+
+		// Calculate totals for summary
+		if t.TransactionType == "income" {
+			totalIncome += t.Amount
+		} else {
+			totalExpenses += t.Amount
+		}
+	}
+
+	// Calculate the current balance
+	currentBalance := totalIncome - totalExpenses
+
+	// Construct the response
+	response := SpenderIDTransactionResponseSummary{
+		Summary: Summary{
+			TotalIncome:    totalIncome,
+			TotalExpenses:  totalExpenses,
+			CurrentBalance: currentBalance,
+		},
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
