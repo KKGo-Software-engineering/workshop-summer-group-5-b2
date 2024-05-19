@@ -83,7 +83,9 @@ func (h handler) GetAll(c echo.Context) error {
 		sps = append(sps, sp)
 	}
 
-	return c.JSON(http.StatusOK, sps)
+	return c.JSON(http.StatusOK, map[string][]Spender{
+		"spenders": sps,
+	})
 }
 
 func (h handler) GetSpenderByID(c echo.Context) error {

@@ -238,3 +238,27 @@ func TestGetAllCategories(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
+
+func TestGetAll(t *testing.T) {
+	e := echo.New()
+	defer e.Close()
+
+	t.Run("get all successfully", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/spenders", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"id", "name", "email"}).
+			AddRow(1, "HongJot", "hong@jot.ok")
+		mock.ExpectQuery(`SELECT id, name, email FROM spender`).WillReturnRows(rows)
+		h := New(config.FeatureFlag{}, db)
+		h.GetAll(c)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"spenders": [{"id": 1, "name": "HongJot", "email": "hong@jot.ok"}]}`, rec.Body.String())
+	})
+}
