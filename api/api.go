@@ -30,7 +30,6 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 	v1.GET("/health", health.Check(db))
 	v1.POST("/upload", eslip.Upload)
 
-
 	handleE := transaction.New(cfg.FeatureFlag, db)
 	v1.GET("/expenses", handleE.GetAll)
 
@@ -45,6 +44,8 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 	{
 		h := transaction.New(cfg.FeatureFlag, db)
 		v1.POST("/transactions", h.Create)
+		v1.PUT("/transaction/:id", h.PutTransaction)
+		v1.GET("/spenders/:id/transactions", h.GetSpenderTransactions)
 	}
 
 	return &Server{e}
