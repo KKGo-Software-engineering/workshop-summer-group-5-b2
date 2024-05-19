@@ -66,7 +66,7 @@ func (h handler) Create(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "bad request body")
 	}
 	var lastInsertId int64
-	err := h.db.QueryRowContext(ctx, `INSERT INTO "transaction" ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
+	err := h.db.QueryRowContext(ctx, `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
 	if err != nil {
 		fmt.Println("query row error", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
