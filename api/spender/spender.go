@@ -26,7 +26,8 @@ func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 }
 
 const (
-	cStmt = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
+	cStmt   = `INSERT INTO spender (name, email) VALUES ($1, $2) RETURNING id;`
+	getStmt = `SELECT id, name, email FROM spender WHERE id = $1;`
 )
 
 func (h handler) Create(c echo.Context) error {
@@ -78,4 +79,21 @@ func (h handler) GetAll(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, sps)
+}
+
+func (h handler) GetSpenderByID(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+	spenderID := c.Param("id")
+
+	var sp Spender
+	err := h.db.QueryRowContext(ctx, getStmt, spenderID).Scan(&sp.ID, &sp.Name, &sp.Email)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, "spender not found")
+	} else if err != nil {
+		logger.Error("query row error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, sp)
 }

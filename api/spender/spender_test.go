@@ -1,6 +1,7 @@
 package spender
 
 import (
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,47 +98,71 @@ func TestCreateSpender(t *testing.T) {
 	})
 }
 
-func TestGetAllSpender(t *testing.T) {
-	t.Run("get all spender succesfully", func(t *testing.T) {
-		e := echo.New()
-		defer e.Close()
+func TestGetSpenderByID(t *testing.T) {
+	e := echo.New()
+	defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+	t.Run("get spender successfully", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
 
-		rows := sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(1, "HongJot", "hong@jot.ok").
-			AddRow(2, "JotHong", "jot@jot.ok")
-		mock.ExpectQuery(`SELECT id, name, email FROM spender`).WillReturnRows(rows)
+		row := sqlmock.NewRows([]string{"id", "name", "email"}).AddRow(1, "HongJot", "hong@jot.ok")
+		mock.ExpectQuery(getStmt).WithArgs("1").WillReturnRows(row)
+		cfg := config.FeatureFlag{}
 
-		h := New(config.FeatureFlag{}, db)
-		err := h.GetAll(c)
+		h := New(cfg, db)
+		err := h.GetSpenderByID(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `[{"id": 1, "name": "HongJot", "email": "hong@jot.ok"},
-		{"id": 2, "name": "JotHong", "email": "jot@jot.ok"}]`, rec.Body.String())
+		assert.JSONEq(t, `{"id": 1, "name": "HongJot", "email": "hong@jot.ok"}`, rec.Body.String())
 	})
 
-	t.Run("get all spender failed on database", func(t *testing.T) {
-		e := echo.New()
-		defer e.Close()
-
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+	t.Run("get spender not found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/spenders/2", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id")
+		c.SetParamNames("id")
+		c.SetParamValues("2")
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
 
-		mock.ExpectQuery(`SELECT id, name, email FROM spender`).WillReturnError(assert.AnError)
+		mock.ExpectQuery(getStmt).WithArgs("2").WillReturnError(sql.ErrNoRows)
+		cfg := config.FeatureFlag{}
 
-		h := New(config.FeatureFlag{}, db)
-		err := h.GetAll(c)
+		h := New(cfg, db)
+		err := h.GetSpenderByID(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		assert.Equal(t, "\"spender not found\"", strings.TrimSpace(rec.Body.String()))
+	})
+
+	t.Run("get spender database error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/spenders/3", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id")
+		c.SetParamNames("id")
+		c.SetParamValues("3")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectQuery(getStmt).WithArgs("3").WillReturnError(assert.AnError)
+		cfg := config.FeatureFlag{}
+
+		h := New(cfg, db)
+		err := h.GetSpenderByID(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
