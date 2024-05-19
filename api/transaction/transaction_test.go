@@ -187,3 +187,67 @@ func TestGetSpenderTransactionsSummarySuccess(t *testing.T) {
 		t.Errorf("There were unfulfilled expectations: %s", err)
 	}
 }
+
+func TestGetTransactionsGroupedByCategory(t *testing.T) {
+	// Initialize Echo and handler
+	e := echo.New()
+	db, mock, _ := sqlmock.New()
+	h := New(config.FeatureFlag{}, db)
+
+	// Mock database response
+	query := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction`
+	mock.ExpectQuery(query).WillReturnRows(sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
+		AddRow(1, "2024-04-30T09:00:00.000Z", 1000, "Food", "expense", "Lunch", "https://example.com/image1.jpg", 1).
+		AddRow(2, "2024-04-29T19:00:00.000Z", 2000, "Transport", "income", "Salary", "https://example.com/image2.jpg", 1).
+		AddRow(3, "2024-04-29T19:00:00.000Z", 2000, "Other", "income", "Salary", "https://example.com/image2.jpg", 1))
+
+	// Create a request and response recorder
+	req := httptest.NewRequest(http.MethodGet, "/transactions/category", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Invoke the handler function
+	if assert.NoError(t, h.GetTransactionsGroupedByCategory(c)) {
+		// Validate response
+		assert.Equal(t, http.StatusOK, rec.Code)
+		expected := `{
+			"Food": [
+				{
+					"id": 1,
+					"date": "2024-04-30T09:00:00.000Z",
+					"amount": 1000,
+					"category": "Food",
+					"transaction_type": "expense",
+					"note": "Lunch",
+					"image_url": "https://example.com/image1.jpg",
+					"spender_id": 1
+				}
+			],
+			"Transport": [
+				{
+					"id": 2,
+					"date": "2024-04-29T19:00:00.000Z",
+					"amount": 2000,
+					"category": "Transport",
+					"transaction_type": "income",
+					"note": "Salary",
+					"image_url": "https://example.com/image2.jpg",
+					"spender_id": 1
+				}
+			],
+			"Other": [
+				{
+					"id": 3,
+					"date": "2024-04-29T19:00:00.000Z",
+					"amount": 2000,
+					"category": "Other",
+					"transaction_type": "income",
+					"note": "Salary",
+					"image_url": "https://example.com/image2.jpg",
+					"spender_id": 1
+				}
+			]
+		}`
+		assert.JSONEq(t, expected, rec.Body.String())
+	}
+}

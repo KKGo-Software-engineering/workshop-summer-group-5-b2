@@ -195,3 +195,36 @@ func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+type CategoryTransactions struct {
+	Category     string        `json:"category"`
+	Transactions []Transaction `json:"transactions"`
+}
+
+func (h *handler) GetTransactionsGroupedByCategory(c echo.Context) error {
+	logger := mlog.L(c)
+	ctx := c.Request().Context()
+
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction`
+
+	rows, err := h.db.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		logger.Error("query error", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	defer rows.Close()
+
+	transactionsByCategory := make(map[string][]Transaction)
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
+		if err != nil {
+			logger.Error("scan error", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		transactionsByCategory[t.Category] = append(transactionsByCategory[t.Category], t)
+	}
+
+	return c.JSON(http.StatusOK, transactionsByCategory)
+}
