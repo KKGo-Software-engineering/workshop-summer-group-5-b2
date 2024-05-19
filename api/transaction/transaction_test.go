@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -147,4 +148,42 @@ func TestPutTransaction(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"message": "Transaction updated successfully"}`, rec.Body.String())
+}
+
+func TestGetSpenderTransactionsSummarySuccess(t *testing.T) {
+	e := echo.New()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("An error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	h := &handler{db: db}
+
+	// Prepare the SQL query regex, allowing for flexible whitespace
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+	sqlQuery = regexp.QuoteMeta(sqlQuery)
+	sqlQuery = strings.Replace(sqlQuery, "\\ ", "\\s*", -1) // Allow any amount of whitespace
+
+	// Set up the mock expectation with the modified regex
+	mock.ExpectQuery(sqlQuery).
+		WithArgs("1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
+			AddRow(1, time.Now(), 100.00, "Income", "income", "Salary", "http://example.com/img.jpg", 1).
+			AddRow(2, time.Now(), 50.00, "Food", "expense", "Groceries", "http://example.com/img2.jpg", 1))
+
+	req := httptest.NewRequest(http.MethodGet, "/spender/1/transactions/summart", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("1")
+
+	if assert.NoError(t, h.GetSpenderTransactionSummary(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+	}
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("There were unfulfilled expectations: %s", err)
+	}
 }
