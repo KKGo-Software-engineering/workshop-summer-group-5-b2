@@ -19,12 +19,7 @@ import (
 
 func TestCreateIT(t *testing.T) {
 	t.Run("create transactions successfully", func(t *testing.T) {
-		sql, err := getTestDatabaseFromConfig()
-		if err != nil {
-			t.Error(err)
-		}
-		migration.ApplyMigrations(sql)
-		defer migration.RollbackMigrations(sql)
+		sql := newDatabase(t)
 
 		h := New(config.FeatureFlag{EnableCreateSpender: true}, sql)
 		e := echo.New()
@@ -39,16 +34,21 @@ func TestCreateIT(t *testing.T) {
 
 		e.ServeHTTP(rec, req)
 
-		// assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.Equal(t, "", rec.Body.String())
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
 	})
 }
 
-func getTestDatabaseFromConfig() (*sql.DB, error) {
+func newDatabase(t *testing.T) *sql.DB {
+	t.Helper()
 	cfg := config.Parse("DOCKER")
 	sql, err := sql.Open("postgres", cfg.PostgresURI())
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	return sql, nil
+	migration.ApplyMigrations(sql)
+	t.Cleanup(func() {
+		sql.Query("DELETE FROM transaction Where amount=$1 AND category=$2 AND date=$3;", 200.99, "refund", "2024-05-18T15:00:37.557628+07:00")
+	})
+	return sql
 }

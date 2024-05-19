@@ -18,12 +18,7 @@ import (
 
 func TestCreateSpenderIT(t *testing.T) {
 	t.Run("create spender successfully when feature toggle is enable", func(t *testing.T) {
-		sql, err := getTestDatabaseFromConfig()
-		if err != nil {
-			t.Error(err)
-		}
-		migration.ApplyMigrations(sql)
-		defer migration.RollbackMigrations(sql)
+		sql := newDatabase(t)
 
 		h := New(config.FeatureFlag{EnableCreateSpender: true}, sql)
 		e := echo.New()
@@ -45,12 +40,7 @@ func TestCreateSpenderIT(t *testing.T) {
 
 func TestGetAllSpenderIT(t *testing.T) {
 	t.Run("get all spender successfully", func(t *testing.T) {
-		sql, err := getTestDatabaseFromConfig()
-		if err != nil {
-			t.Error(err)
-		}
-		migration.ApplyMigrations(sql)
-		defer migration.RollbackMigrations(sql)
+		sql := newDatabase(t)
 
 		h := New(config.FeatureFlag{}, sql)
 		e := echo.New()
@@ -68,11 +58,16 @@ func TestGetAllSpenderIT(t *testing.T) {
 	})
 }
 
-func getTestDatabaseFromConfig() (*sql.DB, error) {
+func newDatabase(t *testing.T) *sql.DB {
+	t.Helper()
 	cfg := config.Parse("DOCKER")
 	sql, err := sql.Open("postgres", cfg.PostgresURI())
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	return sql, nil
+	migration.ApplyMigrations(sql)
+	t.Cleanup(func() {
+		sql.Query("DELETE FROM spender Where name=$1 AND email=$2;", "HongJot", "hong@jot.ok")
+	})
+	return sql
 }
