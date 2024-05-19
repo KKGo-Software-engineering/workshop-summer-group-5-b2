@@ -261,4 +261,21 @@ func TestGetAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.JSONEq(t, `{"spenders": [{"id": 1, "name": "HongJot", "email": "hong@jot.ok"}]}`, rec.Body.String())
 	})
+
+	t.Run("get all query error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/spenders", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectQuery(`SELECT id, name, email FROM spender`).WillReturnError(assert.AnError)
+		h := New(config.FeatureFlag{}, db)
+		err := h.GetAll(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
 }
