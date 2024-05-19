@@ -146,39 +146,9 @@ type SpenderIDTransactionResponseSummary struct {
 }
 
 func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
-
-	spenderID := c.Param("id") // Get the spender ID from the URL parameter
-
-	// Placeholder for the database connection
-	db := h.db // Assuming there is a db field in the handler struct for the database connection
-
-	// Querying the database for transactions related to the spender
-	rows, err := db.Query(sqlQuery, spenderID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
-		return err
-	}
-
-	defer rows.Close()
-
-	var transactions []Transaction
-	var totalIncome, totalExpenses float64
-
-	for rows.Next() {
-		var t Transaction
-		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		transactions = append(transactions, t)
-
-		// Calculate totals for summary
-		if t.TransactionType == "income" {
-			totalIncome += t.Amount
-		} else {
-			totalExpenses += t.Amount
-		}
+	totalIncome, totalExpenses, err2, done, _ := transaction(c, h)
+	if done {
+		return err2
 	}
 
 	// Calculate the current balance
@@ -194,6 +164,44 @@ func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func transaction(c echo.Context, h *handler) (float64, float64, error, bool, []Transaction) {
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+
+	spenderID := c.Param("id") // Get the spender ID from the URL parameter
+
+	// Placeholder for the database connection
+	db := h.db // Assuming there is a db field in the handler struct for the database connection
+
+	// Querying the database for transactions related to the spender
+	rows, err := db.Query(sqlQuery, spenderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+		return 0, 0, err, true, nil
+	}
+
+	defer rows.Close()
+
+	var transactions []Transaction
+	var totalIncome, totalExpenses float64
+
+	for rows.Next() {
+		var t Transaction
+		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
+		if err != nil {
+			return 0, 0, c.JSON(http.StatusInternalServerError, err.Error()), true, nil
+		}
+		transactions = append(transactions, t)
+
+		// Calculate totals for summary
+		if t.TransactionType == "income" {
+			totalIncome += t.Amount
+		} else {
+			totalExpenses += t.Amount
+		}
+	}
+	return totalIncome, totalExpenses, nil, false, transactions
 }
 
 type CategoryTransactions struct {
@@ -230,38 +238,12 @@ func (h *handler) GetTransactionsGroupedByCategory(c echo.Context) error {
 }
 
 func (h *handler) GetSpenderTransactions(c echo.Context) error {
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
-	spenderID := c.Param("id") // Get the spender ID from the URL parameter
-	// Placeholder for the database connection
-	db := h.db // Assuming there is a db field in the handler struct for the database connection
-	// Querying the database for transactions related to the spender
-	rows, err := db.Query(sqlQuery, spenderID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
-		return err
-	}
-	defer rows.Close()
-	var transactions []Transaction
-	var totalIncome, totalExpenses float64
-	for rows.Next() {
-		var t Transaction
-		err := rows.Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.TransactionType, &t.Note, &t.ImageURL, &t.SpenderId)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		transactions = append(transactions, t)
-		// Calculate totals for summary
-		if t.TransactionType == "income" {
-			totalIncome += t.Amount
-		} else {
-			totalExpenses += t.Amount
-		}
-	}
+	totalIncome, totalExpenses, _, _, tran := transaction(c, h)
 	// Calculate the current balance
 	currentBalance := totalIncome - totalExpenses
 	// Construct the response
 	response := SpenderIDTransactionResponse{
-		Transactions: transactions,
+		Transactions: tran,
 		Summary: Summary{
 			TotalIncome:    totalIncome,
 			TotalExpenses:  totalExpenses,
@@ -270,7 +252,7 @@ func (h *handler) GetSpenderTransactions(c echo.Context) error {
 		Pagination: Pagination{
 			CurrentPage: 1,
 			TotalPages:  1,
-			PerPage:     len(transactions),
+			PerPage:     len(tran),
 		},
 	}
 

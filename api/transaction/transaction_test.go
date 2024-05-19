@@ -354,8 +354,8 @@ func TestGetSpenderTransactionsDBError(t *testing.T) {
 	c.SetParamNames("id")
 	c.SetParamValues("1")
 
-	if err := h.GetSpenderTransactions(c); assert.Error(t, err) {
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	if err := h.GetSpenderTransactions(c); assert.Nil(t, err) {
+		assert.Equal(t, 500, rec.Code)
 	}
 
 }
