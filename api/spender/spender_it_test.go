@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
-	"github.com/KKGo-Software-engineering/workshop-summer/migration"
 	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +64,6 @@ func newDatabase(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	migration.ApplyMigrations(sql)
 	t.Cleanup(func() {
 		sql.Query("DELETE FROM spender Where name=$1 AND email=$2;", "HongJot", "hong@jot.ok")
 	})

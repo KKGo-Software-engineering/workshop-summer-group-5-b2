@@ -31,7 +31,7 @@ func TestGetAllSpender(t *testing.T) {
 
 		rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
 			AddRow(1, "2024-05-18 08:45:24.119432+00", "0.0", "Food", "expense", "", "", "1")
-		mock.ExpectQuery(`SELECT * FROM public.transaction WHERE transaction_type='expense'`).WillReturnRows(rows)
+		mock.ExpectQuery(`SELECT * FROM transaction WHERE transaction_type='expense'`).WillReturnRows(rows)
 
 		h := New(config.FeatureFlag{}, db)
 		err := h.GetAll(c)
@@ -82,7 +82,7 @@ func TestCreate(t *testing.T) {
 
 		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		defer db.Close()
-		cStmt := `INSERT INTO public.transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`
+		cStmt := `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`
 		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
 		mock.ExpectQuery(cStmt).WithArgs("2024-05-18T15:00:37.557628+07:00", 200.99, "refund", "income", 2).WillReturnRows(row)
 		cfg := config.FeatureFlag{EnableCreateSpender: true}
@@ -108,7 +108,7 @@ type Expense struct {
 }
 
 func TestPutTransaction(t *testing.T) {
-	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 
 	e := echo.New()
 	defer e.Close()
@@ -162,7 +162,7 @@ func TestGetSpenderTransactionsSummarySuccess(t *testing.T) {
 	h := &handler{db: db}
 
 	// Prepare the SQL query regex, allowing for flexible whitespace
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id=$1`
 	sqlQuery = regexp.QuoteMeta(sqlQuery)
 	sqlQuery = strings.Replace(sqlQuery, "\\ ", "\\s*", -1) // Allow any amount of whitespace
 
@@ -196,7 +196,7 @@ func TestGetTransactionsGroupedByCategory(t *testing.T) {
 	h := New(config.FeatureFlag{}, db)
 
 	// Mock database response
-	query := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction`
+	query := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction`
 	mock.ExpectQuery(query).WillReturnRows(sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
 		AddRow(1, "2024-04-30T09:00:00.000Z", 1000, "Food", "expense", "Lunch", "https://example.com/image1.jpg", 1).
 		AddRow(2, "2024-04-29T19:00:00.000Z", 2000, "Transport", "income", "Salary", "https://example.com/image2.jpg", 1).
@@ -254,7 +254,7 @@ func TestGetTransactionsGroupedByCategory(t *testing.T) {
 }
 
 func TestPutTransactionDbFailure(t *testing.T) {
-	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 	e := echo.New()
 	defer e.Close()
 
@@ -305,7 +305,7 @@ func TestGetSpenderTransactionsSuccess(t *testing.T) {
 	h := &handler{db: db}
 
 	// Prepare the SQL query regex, allowing for flexible whitespace
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id=$1`
 	sqlQuery = regexp.QuoteMeta(sqlQuery)
 	sqlQuery = strings.Replace(sqlQuery, "\\ ", "\\s*", -1) // Allow any amount of whitespace
 
@@ -341,7 +341,7 @@ func TestGetSpenderTransactionsDBError(t *testing.T) {
 	defer db.Close()
 
 	h := &handler{db: db}
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id=$1`
 
 	// Handle expected errors
 	mock.ExpectQuery(sqlQuery).
@@ -375,7 +375,7 @@ func TestGetAllTransaction(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "transaction_type", "note", "image_url", "spender_id"}).
 		AddRow(1, "2024-05-18T08:45:24.119432Z", 100.0, "Food", "expense", "Lunch at cafe", "http://example.com/image.jpg", 1).
 		AddRow(2, "2024-05-18T09:45:24.119432Z", 50.0, "Transport", "expense", "Bus fare", "", 2)
-	mock.ExpectQuery(`SELECT * FROM public.transaction`).WillReturnRows(rows)
+	mock.ExpectQuery(`SELECT * FROM transaction`).WillReturnRows(rows)
 
 	h := handler{db: db}
 	err = h.GetAllTransaction(c)

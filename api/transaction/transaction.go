@@ -36,7 +36,7 @@ func (h handler) GetAll(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
-	rows, err := h.db.QueryContext(ctx, `SELECT * FROM public.transaction WHERE transaction_type='expense'`)
+	rows, err := h.db.QueryContext(ctx, `SELECT * FROM transaction WHERE transaction_type='expense'`)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -67,7 +67,7 @@ func (h handler) Create(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, msg)
 	}
 	var lastInsertId int64
-	err := h.db.QueryRowContext(ctx, `INSERT INTO public.transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
+	err := h.db.QueryRowContext(ctx, `INSERT INTO transaction ("date", "amount", "category", "transaction_type", "spender_id") VALUES ($1, $2, $3, $4, $5) RETURNING id;`, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId).Scan(&lastInsertId)
 	if err != nil {
 		fmt.Println("query row error", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -111,7 +111,7 @@ func (h handler) PutTransaction(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, msg)
 	}
 
-	query := `UPDATE public.transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
+	query := `UPDATE transaction SET date=$1, amount=$2, category=$3, transaction_type=$4, spender_id=$5, note=$6, image_url=$7 WHERE id=$8`
 	_, err := h.db.ExecContext(ctx, query, req.Date, req.Amount, req.Category, req.TransactionType, req.SpenderId, req.Note, req.ImageUrl, transactionID)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
@@ -165,7 +165,7 @@ func (h *handler) GetSpenderTransactionSummary(c echo.Context) error {
 }
 
 func transaction(c echo.Context, h *handler) (float64, float64, error, bool, []Transaction) {
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction WHERE spender_id=$1`
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction WHERE spender_id=$1`
 
 	spenderID := c.Param("id") // Get the spender ID from the URL parameter
 
@@ -211,7 +211,7 @@ func (h *handler) GetTransactionsGroupedByCategory(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
-	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM public.transaction`
+	sqlQuery := `SELECT id, date, amount, category, transaction_type, note, image_url, spender_id FROM transaction`
 
 	rows, err := h.db.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -261,7 +261,7 @@ func (h handler) GetAllTransaction(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
-	rows, err := h.db.QueryContext(ctx, `SELECT * FROM public.transaction`)
+	rows, err := h.db.QueryContext(ctx, `SELECT * FROM transaction`)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, err.Error())
